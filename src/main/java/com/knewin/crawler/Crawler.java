@@ -1,26 +1,27 @@
 package com.knewin.crawler;
 
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.HashMap;
-import com.knewin.crawler.util.Type;
 import com.knewin.crawler.model.News;
+import com.knewin.crawler.util.Type;
 import org.jsoup.select.Elements;
-import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
+import org.jsoup.nodes.Element;
+import java.io.IOException;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.io.FileWriter;
+import org.slf4j.Logger;
+import org.jsoup.Jsoup;
 
 public class Crawler {
   private final HashMap<String, HashSet<String>> _uPageNews = new  HashMap<>();
-  private final Logger logger = LoggerFactory.getLogger(Crawler.class);
+  private final Logger _uLogger = LoggerFactory.getLogger(Crawler.class);
   private final List<News> _uNewsList = new ArrayList<>();
   private final int _uMAX_DEPTH;
   private final String _uURL;
+  private Integer _uRequest = 0;
 
   public Crawler(String URL, int depth) {
     this._uURL = URL;
@@ -67,19 +68,19 @@ public class Crawler {
     fncNewsLinks().forEach( (_rUrlPage, value)
       -> value.forEach(_rUlNews -> {
         Element _rArticle = fncVisit(_rUlNews, Type.ARTICLE_BODY).get(0);
-        _uNewsList.add(
-          new News(
-            _rArticle.select(Type.ARTICLE_TITLE.get()).text()    ,
-            _rArticle.select(Type.ARTICLE_SUBTITLE.get()).text() ,
-            _rArticle.select(Type.ARTICLE_DATE.get()).text()     ,
-            _rArticle.select(Type.ARTICLE_AUTHOR.get()).get(0)
-                .getAllElements().get(1).text()                  ,
-            _rArticle.select(Type.ARTICLE.get()).text()          ,
-            _rUlNews                                             ,
-            _rUrlPage
-          )
-        );
-      })
+      _uNewsList.add(
+              new News(
+                _rArticle.select(Type.ARTICLE_TITLE.get()).text()      ,
+                _rArticle.select(Type.ARTICLE_SUBTITLE.get()).text()   ,
+                fncMaskDate(_rArticle.select(Type.ARTICLE_DATE.get())) ,
+                _rArticle.select(Type.ARTICLE_AUTHOR.get()).get(0)
+                    .getAllElements().get(1).text()                    ,
+                _rArticle.select(Type.ARTICLE.get()).text()            ,
+                _rUlNews                                               ,
+                _rUrlPage
+              )
+            );
+        })
     );
     proPrintConsole(); // consist
   }
@@ -89,7 +90,7 @@ public class Crawler {
    * @return Elements
    * */
   private Elements fncVisit(String page, Type atributte) {
-    logger.debug("Visiting page {}", page);
+    _uLogger.debug("Visiting page {}", page);
     Elements _rArticle = null;
     try {
       Document _rDocument = Jsoup.connect(page).get();
@@ -97,9 +98,9 @@ public class Crawler {
 
     } catch (Exception e) {
       System.err.println(e.getMessage());
-      logger.error("Page not indexed", e);
+      _uLogger.error("Page not indexed", e);
     } finally {
-      logger.info("Page indexed!");
+      _uRequest++;
     }
     return _rArticle;
   }
@@ -122,7 +123,7 @@ public class Crawler {
         }
       }
     });
-    logger.info(String.valueOf(_rResult));
+    _uLogger.info(String.valueOf(_rResult));
     writeToFile(_rResult);
   }
 
@@ -136,11 +137,33 @@ public class Crawler {
       writer = new FileWriter(Type.NAME_FILE.get());
       writer.write(String.valueOf(_rContent));
       writer.close();
-      logger.info("Crawler saved to fale -> "+Type.NAME_FILE.get());
+      _uLogger.info("Crawler saved to fale -> "+Type.NAME_FILE.get());
     } catch (IOException e) {
       System.err.println(e.getMessage());
     } finally {
-      logger.info("Crawler finish !");
+      _uLogger.info("Crawler finish - Number of resquisitions carried out: "+_uRequest);
+
     }
+  }
+
+  /** Mask - does data conversion
+   * @return String
+   * */
+  private String fncMaskDate(Elements _rHtmlDate) {
+    DateFormat input = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
+    DateFormat output = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.US);
+    String _rResult = "";
+    String _rDate;
+    try {
+      if(_rHtmlDate.size() > 1)
+        _rDate = _rHtmlDate.get(1).attr("datetime");
+      else
+        _rDate = _rHtmlDate.get(0).attr("datetime");
+      Date date = input.parse(_rDate.substring (0, _rDate.length() - 6));
+      _rResult = output.format(date);
+    } catch (ParseException e) {
+      e.printStackTrace();
+    }
+    return _rResult;
   }
 }

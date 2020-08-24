@@ -8,7 +8,7 @@ public enum Type {
   ARTICLE_TITLE("h1[class=page-title-1"),
   ARTICLE_SUBTITLE("p[class=article-lead]"),
   ARTICLE_AUTHOR("span[class=author-name]"),
-  ARTICLE_DATE("span[class=article-date]"),
+  ARTICLE_DATE("time[datetime]"),
   ARTICLE("div[class=col-md-9 col-lg-8 col-xl-6 m-sm-auto m-lg-0 article-content]"),
   PAGE("page/");
   private String html;
